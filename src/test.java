@@ -55,16 +55,22 @@ public class test {
                 else {endY = startY + stripHeight;}
                 BufferedImage strip = image.getSubimage(0, startY, width, endY - startY);
 
+                // send strip to workers
                 sendStrip(strip, i);
             }
 
-            // send strip to workers
-
             // compute own strip
+            BufferedImage masterStrip = image.getSubimage(0,0, width, stripHeight);
+            BufferedImage masterStripProcessed = applyKernel( masterStrip,kernel);
 
-            // receive strip from workers
-
+            // recover strip from workers
+            BufferedImage[] strips = new BufferedImage[size];
+            strips[0] = masterStripProcessed; // strip from master
+            for (int i = 0; i < size; i++) {
+                strips[i] =  recoverStrip(i, width, stripHeight);
+            }
             // merge back together
+
 
         } else {    // WORKER PROCESS: receive strip, compute strip, send strip back to master
 
@@ -82,9 +88,32 @@ public class test {
 
 
 
+
     //public static returnStrip(){}
 
-    //public static receiveStrip(){}
+    public static BufferedImage receiveStrip(int id) throws MPIException{
+
+        int[] size = new int[2]; // to store the data of size we receive
+        MPI.COMM_WORLD.Recv(size, 0, 2, MPI.INT, id, 0);
+        int width = size[0];
+        int height = size[1];
+        int[] pixels = new int[width * height];
+        MPI.COMM_WORLD.Recv(pixels, 0, width * height, MPI.INT, id, 1);
+        BufferedImage strip = new BufferedImage(width,height, BufferedImage.TYPE_INT_RGB);
+        strip.setRGB(0,0, width, height, pixels, 0, width);
+
+        return strip;
+    }
+
+    public static BufferedImage recoverStrip(int id, int width, int stripHeight) throws MPIException{
+
+        int[] pixels = new int[width * stripHeight];
+        MPI.COMM_WORLD.Recv(pixels, 0, width*stripHeight, MPI.INT, id, 2);
+        BufferedImage strip =  new BufferedImage(width, stripHeight, BufferedImage.TYPE_INT_RGB);
+        strip.setRGB(0,0, width, stripHeight, pixels, 0, width);
+
+        return strip;
+    }
 
     public static BufferedImage applyKernel(BufferedImage image, float[][] kernel ){
         int width = image.getWidth();
@@ -130,8 +159,10 @@ public class test {
 
     public static String[] getImage(){
 
+        System.out.println("Now select the image from the explorer (may have opened in background):");
+
         String[] input = {"",""};
-                FileDialog fileDialog = new FileDialog((Frame) null, "Select an Image");
+                FileDialog fileDialog = new FileDialog((Frame) null, "Select an image");
                 fileDialog.setVisible(true);
 
                 // get directory and file name
@@ -159,7 +190,7 @@ public class test {
         System.out.println("Select kernel: \n[1] identity\n[2] sharpen\n[3] box blur\n[4] gaussian blur\n[5] edge detection\ninput: ");
         try {
             selectedKernel = scan.nextInt();
-            //System.out.println("Selected kernel: " + selectedKernel);
+
         } catch (InputMismatchException e) {
             System.out.println("Invalid input. Please enter a valid integer.");
             scan.nextLine();
