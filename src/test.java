@@ -80,22 +80,51 @@ public class test {
         MPI.Finalize();
     }
 
-    /*public static BufferedImage applyKernel(BufferedImage image, float[][] kernel ){
-        int width = image.getWidth();
-        int height = image.getHeight();
-        BufferedImage output = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 
-
-        return output;
-    }*/ // to be continued
 
     //public static returnStrip(){}
 
     //public static receiveStrip(){}
 
-    public static sendStrip(){
+    public static BufferedImage applyKernel(BufferedImage image, float[][] kernel ){
+        int width = image.getWidth();
+        int height = image.getHeight();
+        BufferedImage output = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                float sumRed = 0;
+                float sumGreen = 0;
+                float sumBlue = 0;
 
+                // applying kernel loop
+                for (int i = -1; i <= 1 ; i++) {
+                    for (int j = -1; j <= 1; j++) {
+                        Color pixelColor = new Color(image.getRGB(x + j, y + i));
+                        sumRed += pixelColor.getRed() * kernel[i+1][j+1];
+                        sumGreen += pixelColor.getGreen() * kernel[i+1][j+1];
+                        sumBlue += pixelColor.getBlue() * kernel[i+1][j+1];
+                    }
+                }
+                int red = (int) Math.min(255, Math.max(0,sumRed));
+                int green = (int) Math.min(255, Math.max(0,sumGreen));
+                int blue = (int) Math.min(255, Math.max(0,sumBlue));
+                int rgb = new Color(red, green, blue).getRGB();
+                output.setRGB(x, y, rgb);
+            }
+        }
+        return output;
+    }
 
+    public static void sendStrip(BufferedImage strip, int dest_rank) throws MPIException{
+
+        int height = strip.getHeight();
+        int width = strip.getWidth();
+        int[] stripx = strip.getRGB(0,0, width, height, null, 0, width);
+        // we are sending: buffer, 0: buffer sarting point, 2: no of elm to send, type of data, destination rank, id of message
+        MPI.COMM_WORLD.Send(new int[]{width, height}, 0, 2, MPI.INT, dest_rank, 0);
+        // sending: rgb values, 0: buffer starting pint, w*h is total no of elm, type int, dest rank, id of msg
+        MPI.COMM_WORLD.Send(stripx, 0, width * height, MPI.INT, dest_rank, 1);
 
     }
 
