@@ -3,6 +3,7 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.nio.Buffer;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
@@ -15,6 +16,9 @@ public class test {
     static int endY;
 
     public static void main(String[] args) throws Exception {
+
+        long t0 = System.currentTimeMillis();
+        long t;
 
         // start routine
         welcomeMessage();
@@ -69,27 +73,44 @@ public class test {
             for (int i = 0; i < size; i++) {
                 strips[i] =  recoverStrip(i, width, stripHeight);
             }
-            // merge back together
 
+            // merge back together
+            BufferedImage output = mergeStrips(strips,width,height);
+            ImageIO.write(output, "png", new File("output.png"));
+            t = System.currentTimeMillis() - t0;
+            System.out.println("The DISTRIBUTED convolution process took " + t + "ms");
 
         } else {    // WORKER PROCESS: receive strip, compute strip, send strip back to master
 
             // receive strip
-
+            BufferedImage strip = receiveStrip(rank);
             // compute strip
-
+            BufferedImage processedStrip = applyKernel(strip, kernel);
             // receive strip
-
+            returnStrip(processedStrip, 0);
         }
-
 
         MPI.Finalize();
     }
 
+    public static void returnStrip(BufferedImage strip, int id) throws MPIException {
+        int width = strip.getWidth();
+        int height = strip.getHeight();
+        int[] pixels = strip.getRGB(0,0, width, height, null, 0, width);
+        MPI.COMM_WORLD.Send(pixels, 0, width*height, MPI.INT, id,2);
+    }
 
+    public static BufferedImage mergeStrips(BufferedImage[] strips, int width, int height ){
 
-
-    //public static returnStrip(){}
+        BufferedImage output = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        int stripLayer = 0;
+        for (int i = 0; i < strips.length; i++) {
+            BufferedImage strip = strips[i];
+            output.createGraphics().drawImage(strip, 0, stripLayer,null);
+            stripLayer += strip.getHeight();
+        }
+        return output;
+    }
 
     public static BufferedImage receiveStrip(int id) throws MPIException{
 
