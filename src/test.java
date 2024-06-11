@@ -1,6 +1,8 @@
 import mpi.*;
-
+import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
@@ -10,9 +12,11 @@ public class test {
     static String fileName = "";
     static String[] input = {"",""};
     static float[][] kernel;
+    static int endY;
 
-    public static void main(String[] argv) throws Exception {
+    public static void main(String[] args) throws Exception {
 
+        // start routine
         welcomeMessage();
         kernel = getKernel();
         input = getImage();
@@ -30,9 +34,68 @@ public class test {
             System.out.println();
         }
 
-        //MPI.Init(argv);
-        //int rank = MPI.COMM_WORLD.Rank();
-        //int size = MPI.COMM_WORLD.Size();
+
+        // becchemo sta image
+        BufferedImage image = ImageIO.read(new File(directory + fileName));
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        // there can't be non-MPI stuff between Init & Finalize
+        MPI.Init(args);
+        int rank = MPI.COMM_WORLD.Rank();
+        int size = MPI.COMM_WORLD.Size();
+
+        if (rank == 0) { // MASTER PROCESS: divide into strips, compute own strip, send strips to workers, receive strips from workers & merge back together.
+
+            // divide image into strips
+            int stripHeight =  height / size;
+            for (int i = 0; i < size; i++) {
+                int startY = i * stripHeight;
+                if (i == size - 1) endY = height;
+                else {endY = startY + stripHeight;}
+                BufferedImage strip = image.getSubimage(0, startY, width, endY - startY);
+
+                sendStrip(strip, i);
+            }
+
+            // send strip to workers
+
+            // compute own strip
+
+            // receive strip from workers
+
+            // merge back together
+
+        } else {    // WORKER PROCESS: receive strip, compute strip, send strip back to master
+
+            // receive strip
+
+            // compute strip
+
+            // receive strip
+
+        }
+
+
+        MPI.Finalize();
+    }
+
+    /*public static BufferedImage applyKernel(BufferedImage image, float[][] kernel ){
+        int width = image.getWidth();
+        int height = image.getHeight();
+        BufferedImage output = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+
+
+        return output;
+    }*/ // to be continued
+
+    //public static returnStrip(){}
+
+    //public static receiveStrip(){}
+
+    public static sendStrip(){
+
+
 
     }
 
